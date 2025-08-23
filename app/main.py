@@ -5,12 +5,11 @@ from fastapi import FastAPI, HTTPException, Path
 from app.schemas import UserPointsResponse
 from app.crud import get_user_points
 from fastapi import FastAPI, HTTPException, status
-from app.schemas import ChallengeCreate, ChallengeResponse
+from app.schemas import ChallengeCreate, ChallengeResponse, ChallengeStatusResponse, ExpiredChallengesResponse
 from app.crud import create_challenge
 from fastapi import FastAPI, HTTPException, status
 from app.schemas import RewardCreate, RewardResponse
-from app.crud import create_reward, get_all_rewards
-from app.schemas import ChallengeInstanceCreate, ChallengeInstanceResponse
+from app.schemas import ChallengeInstanceCreate, ChallengeInstanceResponse, ChallengeProgressResponse
 from app.crud import assign_challenge_to_user
 from app.schemas import ChallengesResponse
 from app.schemas import UserAssignedChallengesResponse
@@ -21,7 +20,7 @@ firebase_admin.initialize_app(cred)
 
 app = FastAPI()
 
-@app.get("/users", summary="Obtener todos los usuarios")
+@app.get("/usuarios", summary="Obtener todos los usuarios", tags=["Usuarios"])
 async def get_all_users():
     try:
         db = firestore.client()
@@ -38,9 +37,10 @@ async def get_all_users():
 
 # Endpoint para obtener puntos de un usuario específico
 
-@app.get("/users/{user_id}/points", 
+@app.get("/usuarios/{user_id}/puntos", 
          response_model=UserPointsResponse,
-         tags=["User Points"])
+         tags=["Puntos de Usuario"],
+         summary="Obtener los puntos de un usuario")
 async def get_points(
     user_id: str = Path(..., description="ID del usuario a consultar", min_length=1)
 ):
@@ -61,7 +61,7 @@ async def get_points(
 
 # Endpoint para inicializar puntos de un usuario
 
-@app.post("/users/{user_id}/points/init", tags=["User Points"])
+@app.post("/usuarios/{user_id}/puntos/iniciar", tags=["Puntos de Usuario"], summary="Inicializar los puntos de un usuario a cero")
 async def init_points(user_id: str):
     try:
         init_user_points(user_id)
@@ -74,10 +74,11 @@ async def init_points(user_id: str):
 
 # Endpoint para crear un nuevo challenge
 
-@app.post("/challenges",
+@app.post("/retos",
          response_model=ChallengeResponse,
          status_code=status.HTTP_201_CREATED,
-         tags=["Challenges"])
+         tags=["Retos"],
+         summary="Crear un nuevo reto")
 async def create_new_challenge(challenge: ChallengeCreate):
     try:
         challenge_data = challenge.dict()
@@ -93,9 +94,10 @@ async def create_new_challenge(challenge: ChallengeCreate):
 
 # Endpoint para obtener todos los challenges
 
-@app.get("/challenges",
+@app.get("/retos",
          response_model=ChallengesResponse,
-         tags=["Challenges"])
+         tags=["Retos"],
+         summary="Obtener todos los retos")
 async def get_challenges():
     try:
         challenges = get_all_challenges()
@@ -112,13 +114,70 @@ async def get_challenges():
             detail=f"Error al obtener challenges: {str(e)}"
         )
 
+@app.post("/retos/deshabilitar-expirados",
+          response_model=ExpiredChallengesResponse,
+          tags=["Retos"],
+          summary="Desactivar challenges con fecha expirada")
+async def disable_expired_challenges_endpoint():
+    try:
+        result = disable_expired_challenges()
+        return {
+            "success": True, 
+            "message": result.get("message"), 
+            "disabled_count": result.get("disabled_count")
+        }
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al procesar la desactivación de challenges: {str(e)}"
+        )
+
+@app.put("/retos/{challenge_id}/desactivar",
+         response_model=ChallengeStatusResponse,
+         tags=["Retos"],
+         summary="Desactivar un reto")
+async def disable_challenge_endpoint(
+    challenge_id: str = Path(..., description="ID del challenge a desactivar")
+):
+    try:
+        result = disable_challenge(challenge_id)
+        return {"success": True, "message": result.get("message")}
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al desactivar el challenge: {str(e)}"
+        )
+
+@app.put("/retos/{challenge_id}/reactivar",
+         response_model=ChallengeStatusResponse,
+         tags=["Retos"],
+         summary="Reactivar un reto")
+async def reactivate_challenge_endpoint(
+    challenge_id: str = Path(..., description="ID del challenge a reactivar")
+):
+    try:
+        result = reactivate_challenge(challenge_id)
+        return {"success": True, "message": result.get("message")}
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al reactivar el challenge: {str(e)}"
+        )
+
 
 # Endpoint para obtener todas las recompensas y Crear nuevas recompensas
 
-@app.post("/rewards",
+@app.post("/recompensas",
          response_model=RewardResponse,
          status_code=status.HTTP_201_CREATED,
-         tags=["Rewards"])
+         tags=["Recompensas"],
+         summary="Crear una nueva recompensa")
 async def create_new_reward(reward: RewardCreate):
     try:
         reward_data = reward.dict()
@@ -132,9 +191,10 @@ async def create_new_reward(reward: RewardCreate):
             detail=f"Error interno al crear la recompensa: {str(e)}"
         )
 
-@app.get("/rewards",
+@app.get("/recompensas",
         response_model=list[RewardResponse],
-        tags=["Rewards"])
+        tags=["Recompensas"],
+        summary="Obtener todas las recompensas")
 async def get_rewards():
     try:
         return get_all_rewards()
@@ -148,10 +208,11 @@ async def get_rewards():
 
 # Endpoints para asignar un challenge a un usuario
 
-@app.post("/challenge-instances",
+@app.post("/instancias-retos",
          response_model=ChallengeInstanceResponse,
          status_code=status.HTTP_201_CREATED,
-         tags=["Challenge Instances"])
+         tags=["Instancias de Retos"],
+         summary="Asignar un reto a un usuario")
 async def create_challenge_instance(instance: ChallengeInstanceCreate):
     try:
         instance_data = instance.dict()
@@ -167,9 +228,10 @@ async def create_challenge_instance(instance: ChallengeInstanceCreate):
 
 # Endpoint para obtener los challenges asignados a un usuario específico
 
-@app.get("/users/{user_id}/assigned-challenges",
+@app.get("/usuarios/{user_id}/retos-asignados",
          response_model=UserAssignedChallengesResponse,
-         tags=["User Challenges"])
+         tags=["Retos de Usuario"],
+         summary="Obtener los retos asignados a un usuario")
 def get_user_assigned_challenges_endpoint(
     user_id: str = Path(..., description="ID del usuario para obtener sus challenges asignados", min_length=1)
 ):
@@ -188,3 +250,48 @@ def get_user_assigned_challenges_endpoint(
             status_code=500,
             detail=f"Error al obtener challenges del usuario: {str(e)}"
         )
+
+
+@app.get("/usuarios/{user_id}/retos-completados",
+         response_model=UserAssignedChallengesResponse,
+         tags=["Retos de Usuario"],
+         summary="Obtener los retos completados de un usuario")
+def get_user_completed_challenges_endpoint(
+    user_id: str = Path(..., description="ID del usuario para obtener sus challenges completados", min_length=1)
+):
+    try:
+        challenges = get_user_completed_challenges(user_id)
+        return {
+            "success": True,
+            "user_id": user_id,
+            "challenges": challenges,
+            "count": len(challenges)
+        }
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al obtener challenges completados del usuario: {str(e)}"
+        )
+
+
+@app.post("/progreso-reto/{instance_id}",
+         response_model=ChallengeProgressResponse,
+         tags=["Instancias de Retos"],
+         summary="Actualizar progreso en un reto")
+async def progress_in_challenge_endpoint(
+    instance_id: str = Path(..., description="ID de la instancia del challenge")
+):
+    try:
+        result = update_challenge_progress(instance_id)
+        return {"success": True, "message": result.get("message")}
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al actualizar el progreso: {str(e)}"
+        )
+
+

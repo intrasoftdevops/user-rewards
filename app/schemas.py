@@ -27,18 +27,22 @@ class UserPointsResponse(BaseModel):
     message: str = "Puntos obtenidos exitosamente"   
 
 #####################################
-class ChallengeCreate(BaseModel):
+class ChallengeBase(BaseModel):
     name: str = Field(..., min_length=3, max_length=50)
     description: str = Field(..., min_length=10, max_length=500)
     max_limit: int = Field(..., gt=0)
     reward_id: str = Field(..., min_length=1)
     max_users: int = Field(..., gt=0)
-    status: Optional[str] = Field("active", pattern="^(active|inactive|completed)$")  # ¡Cambiado aquí!
+    status: Optional[str] = Field("active", pattern="^(active|inactive|completed|disabled)$")
     max_date: Optional[datetime] = None
 
-class ChallengeResponse(ChallengeCreate):
+class ChallengeCreate(ChallengeBase):
+    puntos: int = Field(..., gt=0)
+
+class ChallengeResponse(ChallengeBase):
     challenge_id: str
     date_creation: datetime
+    puntos: int = 0
 ##################################### en listar challenges 
 class ChallengesResponse(BaseModel):
     success: bool
@@ -77,3 +81,18 @@ class UserAssignedChallengesResponse(BaseModel):
     user_id: str
     challenges: List[dict]
     count: int
+    
+    
+###################################
+class ChallengeProgressResponse(BaseModel):
+    success: bool
+    message: str
+
+class ChallengeStatusResponse(BaseModel):
+    success: bool
+    message: str
+
+class ExpiredChallengesResponse(BaseModel):
+    success: bool
+    message: str
+    disabled_count: int
