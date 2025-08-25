@@ -13,6 +13,7 @@ from app.schemas import ChallengeInstanceCreate, ChallengeInstanceResponse, Chal
 from app.crud import assign_challenge_to_user
 from app.schemas import ChallengesResponse
 from app.schemas import UserAssignedChallengesResponse
+from app.schemas import UserRankingResponse
 
 # Configuración Firebase
 cred = credentials.Certificate("app/firebase-key.json")
@@ -292,6 +293,77 @@ async def progress_in_challenge_endpoint(
         raise HTTPException(
             status_code=500,
             detail=f"Error al actualizar el progreso: {str(e)}"
+        )
+
+
+@app.get("/ranking/{user_id}",
+         response_model=UserRankingResponse,
+         tags=["Ranking"],
+         summary="Obtener el ranking de un usuario")
+async def get_user_ranking(
+    user_id: str = Path(..., description="ID del usuario para consultar su ranking", min_length=1)
+):
+    try:
+        rank = get_user_rank(user_id)
+        return {
+            "success": True,
+            "user_id": user_id,
+            "rank": rank
+        }
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al obtener el ranking del usuario: {str(e)}"
+        )
+
+
+@app.get("/ranking/ciudad/{user_id}",
+         response_model=UserRankingResponse,
+         tags=["Ranking"],
+         summary="Obtener el ranking de un usuario por ciudad")
+async def get_user_ranking_by_city(
+    user_id: str = Path(..., description="ID del usuario para consultar su ranking por ciudad", min_length=1)
+):
+    try:
+        rank = get_user_rank_by_city(user_id)
+        return {
+            "success": True,
+            "user_id": user_id,
+            "rank": rank,
+            "message": "Ranking por ciudad obtenido exitosamente"
+        }
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al obtener el ranking por ciudad: {str(e)}"
+        )
+
+
+@app.get("/ranking/departamento/{user_id}",
+         response_model=UserRankingResponse,
+         tags=["Ranking"],
+         summary="Obtener el ranking de un usuario por departamento")
+async def get_user_ranking_by_state(
+    user_id: str = Path(..., description="ID del usuario para consultar su ranking por departamento", min_length=1)
+):
+    try:
+        rank = get_user_rank_by_state(user_id)
+        return {
+            "success": True,
+            "user_id": user_id,
+            "rank": rank,
+            "message": "Ranking por departamento obtenido exitosamente"
+        }
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al obtener el ranking por departamento: {str(e)}"
         )
 
 

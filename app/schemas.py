@@ -96,3 +96,9 @@ class ExpiredChallengesResponse(BaseModel):
     success: bool
     message: str
     disabled_count: int
+
+class UserRankingResponse(BaseModel):
+    success: bool
+    rank: int
+    user_id: str
+    message: str = "Ranking obtenido exitosamente"

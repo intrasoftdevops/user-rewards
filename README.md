@@ -154,6 +154,26 @@ Content-Type: application/json
 GET /users/{user_id}/assigned-challenges
 ```
 
+### 🏆 Ranking
+
+#### Obtener ranking global de un usuario
+Devuelve la posición de un usuario en el ranking global basado en sus puntos.
+```http
+GET /ranking/{user_id}
+```
+
+#### Obtener ranking de un usuario por ciudad
+Devuelve la posición de un usuario en el ranking, compitiendo solo contra usuarios de su misma ciudad.
+```http
+GET /ranking/ciudad/{user_id}
+```
+
+#### Obtener ranking de un usuario por departamento
+Devuelve la posición de un usuario en el ranking, compitiendo solo contra usuarios de su mismo departamento (`state`).
+```http
+GET /ranking/departamento/{user_id}
+```
+
 ## 🔧 Modelos de Datos
 
 ### User
@@ -203,6 +223,16 @@ GET /users/{user_id}/assigned-challenges
 }
 ```
 
+### UserRankingResponse
+```python
+{
+  "success": "boolean",
+  "rank": "integer",
+  "user_id": "string",
+  "message": "string"
+}
+```
+
 ## 🌐 Documentación de la API
 
 Una vez que la aplicación esté ejecutándose, puedes acceder a:
@@ -219,7 +249,6 @@ Una vez que la aplicación esté ejecutándose, puedes acceder a:
 # Ejecutar la aplicación
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
-
 La aplicación estará disponible en `http://localhost:8000`
 
 ## 🔒 Configuración de Seguridad
@@ -254,4 +283,5 @@ Desarrollado como parte de una prueba técnica para un sistema de recompensas y 
 ---
 
 **¡Disfruta usando la API de Sistema de Recompensas! 🎉**
+
 

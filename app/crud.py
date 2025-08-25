@@ -421,3 +421,126 @@ def update_challenge_progress(instance_id: str) -> dict:
         raise HTTPException(status_code=status_code, detail=result['message'])
     
     return result
+
+
+def get_user_rank(user_id: str) -> int:
+    db = firestore.client()
+    
+    # Obtener todos los documentos de 'user_points' y ordenarlos por 'points'
+    users_query = db.collection("user_points").order_by("points", direction=firestore.Query.DESCENDING)
+    all_users = list(users_query.stream())
+    
+    # Crear una lista de user_ids en el orden del ranking
+    ranked_user_ids = [user.id for user in all_users]
+    
+    # Encontrar la posición (rank) del usuario
+    try:
+        rank = ranked_user_ids.index(user_id) + 1
+        return rank
+    except ValueError:
+        # Si el usuario no está en la lista, significa que no tiene puntos
+        raise HTTPException(
+            status_code=404,
+            detail=f"No se encontró un registro de puntos para el usuario con ID {user_id}"
+        )
+
+def get_user_rank_by_city(user_id: str) -> int:
+    db = firestore.client()
+
+    # 1. Obtener la ciudad del usuario especificado
+    user_doc_ref = db.collection("users").document(user_id)
+    user_doc = user_doc_ref.get()
+    if not user_doc.exists:
+        raise HTTPException(status_code=404, detail=f"Usuario con ID {user_id} no encontrado.")
+    
+    user_data = user_doc.to_dict()
+    city = user_data.get("city")
+    if not city:
+        raise HTTPException(status_code=404, detail=f"El usuario con ID {user_id} no tiene una ciudad asignada.")
+
+    # 2. Obtener todos los usuarios de la misma ciudad
+    city_users_query = db.collection("users").where("city", "==", city)
+    city_users_docs = city_users_query.stream()
+    city_user_ids = {doc.id for doc in city_users_docs}
+
+    if not city_user_ids:
+         raise HTTPException(status_code=404, detail=f"No se encontraron usuarios en la ciudad: {city}")
+
+    # 3. Obtener los puntos de todos los usuarios
+    points_docs = db.collection("user_points").stream()
+
+    # 4. Filtrar los puntos solo para usuarios de la ciudad y construir lista para ranking
+    city_users_points = []
+    for doc in points_docs:
+        if doc.id in city_user_ids:
+            points_data = doc.to_dict()
+            city_users_points.append({
+                "user_id": doc.id,
+                "points": points_data.get("points", 0)
+            })
+
+    # 5. Ordenar los usuarios por puntos
+    sorted_users = sorted(city_users_points, key=lambda x: x["points"], reverse=True)
+    
+    # 6. Encontrar el ranking del usuario
+    ranked_user_ids = [user["user_id"] for user in sorted_users]
+    
+    try:
+        rank = ranked_user_ids.index(user_id) + 1
+        return rank
+    except ValueError:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No se encontró un registro de puntos para el usuario con ID {user_id} en su ciudad"
+        )
+
+
+def get_user_rank_by_state(user_id: str) -> int:
+    db = firestore.client()
+
+    # 1. Obtener el departamento del usuario especificado
+    user_doc_ref = db.collection("users").document(user_id)
+    user_doc = user_doc_ref.get()
+    if not user_doc.exists:
+        raise HTTPException(status_code=404, detail=f"Usuario con ID {user_id} no encontrado.")
+    
+    user_data = user_doc.to_dict()
+    state = user_data.get("state")
+    if not state:
+        raise HTTPException(status_code=404, detail=f"El usuario con ID {user_id} no tiene un departamento asignado.")
+
+    # 2. Obtener todos los usuarios del mismo departamento
+    state_users_query = db.collection("users").where("state", "==", state)
+    state_users_docs = state_users_query.stream()
+    state_user_ids = {doc.id for doc in state_users_docs}
+
+    if not state_user_ids:
+         raise HTTPException(status_code=404, detail=f"No se encontraron usuarios en el departamento: {state}")
+
+    # 3. Obtener los puntos de todos los usuarios
+    points_docs = db.collection("user_points").stream()
+
+    # 4. Filtrar los puntos solo para usuarios del departamento y construir lista para ranking
+    state_users_points = []
+    for doc in points_docs:
+        if doc.id in state_user_ids:
+            points_data = doc.to_dict()
+            state_users_points.append({
+                "user_id": doc.id,
+                "points": points_data.get("points", 0)
+            })
+
+    # 5. Ordenar los usuarios por puntos
+    sorted_users = sorted(state_users_points, key=lambda x: x["points"], reverse=True)
+    
+    # 6. Encontrar el ranking del usuario
+    ranked_user_ids = [user["user_id"] for user in sorted_users]
+    
+    try:
+        rank = ranked_user_ids.index(user_id) + 1
+        return rank
+    except ValueError:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No se encontró un registro de puntos para el usuario con ID {user_id} en su departamento"
+        )
